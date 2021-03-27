@@ -1,12 +1,23 @@
 import random
 import time
 import os
-from pprint import pprint
+import argparse
 
-BOARD_SIZE = 50
-DENSITY_FACTOR = 0.3
-SPEED = 0.5
+BOARD_SIZE = 15
+DENSITY_FACTOR = 0.35
+SPEED = 0.3
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--size", action='store', type=int, required=False)
+parser.add_argument("--density", action='store', type=float, required=False)
+parser.add_argument("--speed", action='store', type=float, required=False)
+args = parser.parse_args()
+if args.size:
+    BOARD_SIZE = args.size
+if args.density:
+    DENSITY_FACTOR = args.density
+if args.speed:
+    SPEED = args.speed
 
 board = []
 for row in range(BOARD_SIZE):
@@ -15,9 +26,9 @@ for row in range(BOARD_SIZE):
         tempRow.append("▉▉" if random.random() <= DENSITY_FACTOR else "  ")
     board.append(tempRow)
 
-def adj(row, col):
+def adj(r, c):
     adjacents = []
-    possibleIndices = [(row-1, col-1), (row-1, col+1), (row+1, col-1), (row+1, col+1), (row-1, col), (row+1, col), (row, col-1), (row, col+1)]
+    possibleIndices = [(r-1, c-1), (r-1, c+1), (r+1, c-1), (r+1, c+1), (r-1, c), (r+1, c), (r, c-1), (r, c+1)]
     for coords in possibleIndices:
         if 0 <= coords[0] < BOARD_SIZE and 0 <= coords[1] < BOARD_SIZE:
             adjacents.append(coords)
@@ -27,13 +38,20 @@ def adj(row, col):
 def printBoard():
     for r in range(BOARD_SIZE):
         print("|".join(board[r]))
-        #print("—"*(2*BOARD_SIZE+BOARD_SIZE-1))
 
+
+stateSnapshot = []
+prevStateSnapshot = []
+tertiarySnapshot = []
+terminateIn = -1
+stateMessage = ""
 
 os.system('clear')
 printBoard()
 time.sleep(SPEED)
 while True:
+    if terminateIn > 0:
+        terminateIn -= 1
     os.system('clear')
     willBeBorn = []
     willDie = []
@@ -53,5 +71,21 @@ while True:
         board[cell[0]][cell[1]] = "▉▉"
     for cell in willDie:
         board[cell[0]][cell[1]] = "  "
+    if board == prevStateSnapshot != [] and stateMessage == "":
+        stateMessage = "The ecosystem will permanently oscillate between two states, terminating"
+        terminateIn = 6
+    if board == tertiarySnapshot != [] and stateMessage == "":
+        stateMessage = "The ecosystem will permanently oscillate between three states, terminating"
+        terminateIn = 9
+    tertiarySnapshot = [[item for item in prevStateSnapshot[x]] for x in range(len(prevStateSnapshot))]
+    prevStateSnapshot = [[item for item in stateSnapshot[x]] for x in range(len(stateSnapshot))]
+    stateSnapshot = [[item for item in board[x]] for x in range(len(board))]
     printBoard()
+    if stateSnapshot == prevStateSnapshot != [] and stateMessage == "":
+        stateMessage = "The ecosystem has reached permanent stasis, terminating"
+        terminateIn = 4
+    if terminateIn == 0:
+        break
+    if stateMessage != "":
+        print(stateMessage)
     time.sleep(SPEED)
