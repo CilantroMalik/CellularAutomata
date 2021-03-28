@@ -2,6 +2,8 @@ import random
 import time
 import os
 import argparse
+import sys
+from pynput.keyboard import Key, Listener
 
 BOARD_SIZE = 15
 DENSITY_FACTOR = 0.35
@@ -19,12 +21,31 @@ if args.density:
 if args.speed:
     SPEED = args.speed
 
-board = []
-for row in range(BOARD_SIZE):
-    tempRow = []
-    for col in range(BOARD_SIZE):
-        tempRow.append("▉▉" if random.random() <= DENSITY_FACTOR else "  ")
-    board.append(tempRow)
+
+def keyPressed(key):
+    global wantsToQuit
+    if key == 's':
+        print("--- Starting Seed ---")
+        printBoard(startingSeed)
+    if key == 'q':
+        wantsToQuit = True
+
+
+def keyReleased(key):
+    global wantsToQuit
+    if key == 'r':
+        wantsToQuit = False
+
+def generateSeed():
+    global board, startingSeed
+    board = []
+    for _ in range(BOARD_SIZE):
+        tempRow = []
+        for _ in range(BOARD_SIZE):
+            tempRow.append("▉▉" if random.random() <= DENSITY_FACTOR else "  ")
+        board.append(tempRow)
+    startingSeed = [[item for item in board[x]] for x in range(len(board))]
+
 
 def adj(r, c):
     adjacents = []
@@ -35,57 +56,68 @@ def adj(r, c):
     return adjacents
 
 
-def printBoard():
+def printBoard(someBoard):
     for r in range(BOARD_SIZE):
-        print("|".join(board[r]))
+        print("|".join(someBoard[r]))
 
 
+def runSimulation():
+    global board, terminateIn, stateSnapshot, prevStateSnapshot, tertiarySnapshot, stateMessage, wantsToRestart
+    os.system('clear')
+    printBoard(board)
+    time.sleep(SPEED)
+    while True:
+        if terminateIn > 0:
+            terminateIn -= 1
+        os.system('clear')
+        willBeBorn = []
+        willDie = []
+        for row in range(BOARD_SIZE):
+            for col in range(BOARD_SIZE):
+                countAlive = 0
+                for cell in adj(row, col):
+                    if board[cell[0]][cell[1]] == "▉▉":
+                        countAlive += 1
+                if countAlive > 3 and board[row][col] == "▉▉":
+                    willDie.append((row, col))
+                if countAlive < 2 and board[row][col] == "▉▉":
+                    willDie.append((row, col))
+                if countAlive == 3 and board[row][col] == "  ":
+                    willBeBorn.append((row, col))
+        for cell in willBeBorn:
+            board[cell[0]][cell[1]] = "▉▉"
+        for cell in willDie:
+            board[cell[0]][cell[1]] = "  "
+        if board == prevStateSnapshot != [] and stateMessage == "":
+            stateMessage = "The ecosystem will permanently oscillate between two states, terminating"
+            terminateIn = 6
+        if board == tertiarySnapshot != [] and stateMessage == "":
+            stateMessage = "The ecosystem will permanently oscillate between three states, terminating"
+            terminateIn = 9
+        tertiarySnapshot = [[item for item in prevStateSnapshot[x]] for x in range(len(prevStateSnapshot))]
+        prevStateSnapshot = [[item for item in stateSnapshot[x]] for x in range(len(stateSnapshot))]
+        stateSnapshot = [[item for item in board[x]] for x in range(len(board))]
+        printBoard(board)
+        if stateSnapshot == prevStateSnapshot != [] and stateMessage == "":
+            stateMessage = "The ecosystem has reached permanent stasis, terminating"
+            terminateIn = 4
+        if terminateIn == 0 or wantsToQuit:
+            sys.exit()
+        if stateMessage != "":
+            print(stateMessage)
+        time.sleep(SPEED)
+
+board = []
+startingSeed = []
 stateSnapshot = []
 prevStateSnapshot = []
 tertiarySnapshot = []
 terminateIn = -1
 stateMessage = ""
+wantsToQuit = False
 
-os.system('clear')
-printBoard()
-time.sleep(SPEED)
-while True:
-    if terminateIn > 0:
-        terminateIn -= 1
-    os.system('clear')
-    willBeBorn = []
-    willDie = []
-    for row in range(BOARD_SIZE):
-        for col in range(BOARD_SIZE):
-            countAlive = 0
-            for cell in adj(row, col):
-                if board[cell[0]][cell[1]] == "▉▉":
-                    countAlive += 1
-            if countAlive > 3 and board[row][col] == "▉▉":
-                willDie.append((row, col))
-            if countAlive < 2 and board[row][col] == "▉▉":
-                willDie.append((row, col))
-            if countAlive == 3 and board[row][col] == "  ":
-                willBeBorn.append((row, col))
-    for cell in willBeBorn:
-        board[cell[0]][cell[1]] = "▉▉"
-    for cell in willDie:
-        board[cell[0]][cell[1]] = "  "
-    if board == prevStateSnapshot != [] and stateMessage == "":
-        stateMessage = "The ecosystem will permanently oscillate between two states, terminating"
-        terminateIn = 6
-    if board == tertiarySnapshot != [] and stateMessage == "":
-        stateMessage = "The ecosystem will permanently oscillate between three states, terminating"
-        terminateIn = 9
-    tertiarySnapshot = [[item for item in prevStateSnapshot[x]] for x in range(len(prevStateSnapshot))]
-    prevStateSnapshot = [[item for item in stateSnapshot[x]] for x in range(len(stateSnapshot))]
-    stateSnapshot = [[item for item in board[x]] for x in range(len(board))]
-    printBoard()
-    if stateSnapshot == prevStateSnapshot != [] and stateMessage == "":
-        stateMessage = "The ecosystem has reached permanent stasis, terminating"
-        terminateIn = 4
-    if terminateIn == 0:
-        break
-    if stateMessage != "":
-        print(stateMessage)
-    time.sleep(SPEED)
+# with Listener(on_press=keyPressed, on_release=keyReleased) as listener:
+#     listener.join()
+
+generateSeed()
+runSimulation()
