@@ -5,8 +5,13 @@ import argparse
 import sys
 from pynput.keyboard import Key, Listener
 
-BOARD_SIZE = 15
-DENSITY_FACTOR = 0.35
+# feature wishlist:
+# - configuration editor with hotkeys (spacebar, arrow keys to navigate)
+# - able to tweak parameters on subsequent restarts of the simulation
+# - encode starting seeds into simple text string, also clipboard interaction?
+
+BOARD_SIZE = 25
+DENSITY_FACTOR = 0.25
 SPEED = 0.3
 
 parser = argparse.ArgumentParser()
@@ -102,10 +107,17 @@ def runSimulation():
             stateMessage = "The ecosystem has reached permanent stasis, terminating"
             terminateIn = 4
         if terminateIn == 0 or wantsToQuit:
-            sys.exit()
+            break
         if stateMessage != "":
             print(stateMessage)
         time.sleep(SPEED)
+
+
+def resetSimulation():
+    global board, startingSeed, stateSnapshot, prevStateSnapshot, tertiarySnapshot, terminateIn, stateMessage
+    board, startingSeed, stateSnapshot, prevStateSnapshot, tertiarySnapshot = [], [], [], [], []
+    terminateIn, stateMessage = -1, ""
+
 
 board = []
 startingSeed = []
@@ -121,3 +133,29 @@ wantsToQuit = False
 
 generateSeed()
 runSimulation()
+
+while True:
+    print("--- Options ---")
+    print("Enter: restart the simulation")
+    print("s: save this starting seed")
+    print("q: quit the playground")
+    action = input("Choose one of the above options or press Enter: ")
+    if action == "":
+        print("simulation restarting...")
+        time.sleep(1)
+        os.system('clear')
+        resetSimulation()
+        generateSeed()
+        runSimulation()
+    elif action == "s":
+        print("*** Starting Seed ***")
+        printBoard(startingSeed)
+        restart = input("Press q to quit or anything else to restart: ")
+        if restart == 'q':
+            sys.exit()
+        else:
+            resetSimulation()
+            generateSeed()
+            runSimulation()
+    elif action == "q":
+        sys.exit()
