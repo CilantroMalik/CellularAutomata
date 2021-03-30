@@ -7,7 +7,6 @@ from pynput.keyboard import Key, Listener
 
 # feature wishlist:
 # - configuration editor with hotkeys (spacebar, arrow keys to navigate)
-# - able to tweak parameters on subsequent restarts of the simulation
 # - encode starting seeds into simple text string, also clipboard interaction?
 # - generate a starting seed that produces a given end state
 
