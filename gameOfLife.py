@@ -9,6 +9,7 @@ from pynput.keyboard import Key, Listener
 # - configuration editor with hotkeys (spacebar, arrow keys to navigate)
 # - able to tweak parameters on subsequent restarts of the simulation
 # - encode starting seeds into simple text string, also clipboard interaction?
+# - generate a starting seed that produces a given end state
 
 BOARD_SIZE = 25
 DENSITY_FACTOR = 0.25
@@ -42,7 +43,10 @@ def keyReleased(key):
         wantsToQuit = False
 
 def generateSeed():
-    global board, startingSeed
+    global board, startingSeed, savedSeed
+    if savedSeed:
+        startingSeed = [[item for item in board[x]] for x in range(len(board))]
+        return
     board = []
     for _ in range(BOARD_SIZE):
         tempRow = []
@@ -64,6 +68,24 @@ def adj(r, c):
 def printBoard(someBoard):
     for r in range(BOARD_SIZE):
         print("|".join(someBoard[r]))
+
+
+def encodeBoard(someBoard):
+    encodedString = ""
+    for r in range(BOARD_SIZE):
+        encodedString += "".join([("0" if cell == "  " else "1") for cell in someBoard[r]])
+        encodedString += "/"
+    return encodedString[:-1]
+
+
+def parseBoard(encoded):
+    parsedBoard = []
+    for row in encoded.split("/"):
+        currentRow = []
+        for cell in row:
+            currentRow.append("  " if cell == "0" else "▉▉")
+        parsedBoard.append(currentRow)
+    return parsedBoard
 
 
 def runSimulation():
@@ -114,9 +136,9 @@ def runSimulation():
 
 
 def resetSimulation():
-    global board, startingSeed, stateSnapshot, prevStateSnapshot, tertiarySnapshot, terminateIn, stateMessage
+    global board, startingSeed, stateSnapshot, prevStateSnapshot, tertiarySnapshot, terminateIn, stateMessage, savedSeed
     board, startingSeed, stateSnapshot, prevStateSnapshot, tertiarySnapshot = [], [], [], [], []
-    terminateIn, stateMessage = -1, ""
+    terminateIn, stateMessage, savedSeed = -1, "", False
 
 
 board = []
@@ -127,9 +149,39 @@ tertiarySnapshot = []
 terminateIn = -1
 stateMessage = ""
 wantsToQuit = False
+savedSeed = False
 
 # with Listener(on_press=keyPressed, on_release=keyReleased) as listener:
 #     listener.join()
+
+print("--- Options ---")
+print("Enter: start the simulation with a random seed")
+print("l: load the simulation from a saved seed")
+print("o: override default simulation parameters")
+action = input("Choose one or more of the above options (type in as many letters) or press Enter: ")
+if "l" in action:
+    board = parseBoard(input("Paste in your board code here: "))
+    savedSeed = True
+if "o" in action:
+    if "l" in action:
+        print("Parameters to override are speed (s).")
+    else:
+        print("Parameters to override are board size (b), density factor (d), or speed (s).")
+    while True:
+        override = input("Type in the corresponding letter, then a space, then the new value: ").split(" ")
+        try:
+            if override[0] == 'b':
+                BOARD_SIZE = int(override[1])
+            elif override[0] == 'd':
+                DENSITY_FACTOR = float(override[1])
+            elif override[0] == 's':
+                SPEED = float(override[1])
+            again = input("Type o to override another parameter, or enter to start the simulation: ")
+            if again == "":
+                break
+        except ValueError:
+            print("Invalid parameter value entered.")
+            continue
 
 generateSeed()
 runSimulation()
@@ -149,7 +201,7 @@ while True:
         runSimulation()
     elif action == "s":
         print("*** Starting Seed ***")
-        printBoard(startingSeed)
+        print(encodeBoard(startingSeed))
         restart = input("Press q to quit or anything else to restart: ")
         if restart == 'q':
             sys.exit()
