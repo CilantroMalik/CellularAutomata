@@ -3,7 +3,7 @@ import time
 import os
 import argparse
 import sys
-from pynput.keyboard import Key, Listener
+from pynput.keyboard import Key, Listener, Events, KeyCode
 
 # feature wishlist:
 # - configuration editor with hotkeys (spacebar, arrow keys to navigate)
@@ -155,15 +155,18 @@ savedSeed = False
 
 print("--- Options ---")
 print("Enter: start the simulation with a random seed")
+print("c: create a starting configuration in real time")
 print("l: load the simulation from a saved seed")
 print("o: override default simulation parameters")
-action = input("Choose one or more of the above options (type in as many letters) or press Enter: ")
+action = input("Choose your options (as many as you want, but not both l and c): ")
 if "l" in action:
     board = parseBoard(input("Paste in your board code here: "))
     savedSeed = True
 if "o" in action:
     if "l" in action:
         print("Parameters to override are speed (s).")
+    elif "c" in action:
+        print("Parameters to override are board size (b) or speed (s).")
     else:
         print("Parameters to override are board size (b), density factor (d), or speed (s).")
     while True:
@@ -181,11 +184,48 @@ if "o" in action:
         except ValueError:
             print("Invalid parameter value entered.")
             continue
+if "c" in action:
+    quit = False
+    boardBuilder = [["  "]*BOARD_SIZE for _ in range(BOARD_SIZE)]
+    focus = [0, 0]
+    while True:
+        os.system('clear')
+        temp = boardBuilder[focus[0]][focus[1]]
+        boardBuilder[focus[0]][focus[1]] = "··"
+        printBoard(boardBuilder)
+        boardBuilder[focus[0]][focus[1]] = temp
+        with Events() as events:
+            print("> ")
+            event = events.get(0.001 if quit else 100000)
+            if quit:
+                break
+            if event.key == Key.up:
+                if focus[0] != 0:
+                    focus[0] -= 1
+            elif event.key == Key.down:
+                if focus[0] != BOARD_SIZE-1:
+                    focus[0] += 1
+            elif event.key == Key.left:
+                if focus[1] != 0:
+                    focus[1] -= 1
+            elif event.key == Key.right:
+                if focus[1] != BOARD_SIZE-1:
+                    focus[1] += 1
+            elif event.key == KeyCode.from_char("1"):
+                boardBuilder[focus[0]][focus[1]] = "▉▉"
+            elif event.key == KeyCode.from_char("2"):
+                boardBuilder[focus[0]][focus[1]] = "  "
+            elif event.key == KeyCode.from_char("q"):
+                quit = True
+        time.sleep(0.1)
+    board = [[item for item in boardBuilder[x]] for x in range(len(boardBuilder))]
+    savedSeed = True
 
 generateSeed()
 runSimulation()
 
 while True:
+    purge = input("Simulation finished. Press enter to continue.")
     print("--- Options ---")
     print("Enter: restart the simulation")
     print("s: save this starting seed")
@@ -193,7 +233,7 @@ while True:
     action = input("Choose one of the above options or press Enter: ")
     if action == "":
         print("simulation restarting...")
-        time.sleep(1)
+        time.sleep(2)
         os.system('clear')
         resetSimulation()
         generateSeed()
@@ -210,3 +250,4 @@ while True:
             runSimulation()
     elif action == "q":
         sys.exit()
+    print("action was", action, "- end loop")
