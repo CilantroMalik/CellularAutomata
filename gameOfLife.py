@@ -9,16 +9,18 @@ from pynput.keyboard import Key, Listener, Events, KeyCode
 # - clipboard interaction with saving seeds?
 # - generate a starting seed that produces a given end state
 
-BOARD_SIZE = 25
-DENSITY_FACTOR = 0.25
-SPEED = 0.3
+# -- game constants --
+BOARD_SIZE = 25  # number of cells in one side of the square board
+DENSITY_FACTOR = 0.25  # chance that any given cell gets filled in a randomly generated initial configuration
+SPEED = 0.3  # time between each step of the simulation
 
+# -- parse command line interface --
 parser = argparse.ArgumentParser()
-parser.add_argument("--size", action='store', type=int, required=False)
-parser.add_argument("--density", action='store', type=float, required=False)
-parser.add_argument("--speed", action='store', type=float, required=False)
+parser.add_argument("--size", action='store', type=int, required=False)  # corresponds to BOARD_SIZE
+parser.add_argument("--density", action='store', type=float, required=False)  # corresponds to DENSITY_FACTOR
+parser.add_argument("--speed", action='store', type=float, required=False)  # corresponds to SPEED
 args = parser.parse_args()
-if args.size:
+if args.size:  # all arguments are optional, so have to check for each one before setting the appropriate constant
     BOARD_SIZE = args.size
 if args.density:
     DENSITY_FACTOR = args.density
@@ -26,63 +28,70 @@ if args.speed:
     SPEED = args.speed
 
 
+# -- helper functions --
+
+# keyPressed: handle a key press from a listener
 def keyPressed(key):
     global wantsToQuit
-    if key == 's':
+    if key == 's':  # displays the starting seed for the current run of the simulation
         print("--- Starting Seed ---")
         printBoard(startingSeed)
-    if key == 'q':
+    if key == 'q':  # sets a flag that will end the simulation on the next run loop
         wantsToQuit = True
 
-
+# keyReleased: handle a key release from a listener
 def keyReleased(key):
     global wantsToQuit
-    if key == 'r':
+    if key == 'r':  # restart the game (i.e. set the quit flag back to False)
         wantsToQuit = False
 
+# generateSeed: create a starting seed for the game and store it, or load a provided seed if applicable
 def generateSeed():
-    global board, startingSeed, savedSeed
-    if savedSeed:
-        startingSeed = [[item for item in board[x]] for x in range(len(board))]
-        return
-    board = []
-    for _ in range(BOARD_SIZE):
+    global board, startingSeed, savedSeed  # we will be reading from and/or writing to these game state variables
+    if savedSeed:  # if the user inputted a seed somehow (either a saved one through a code, or created through config editor)
+        startingSeed = [[item for item in board[x]] for x in range(len(board))]  # make sure to shallow copy to the starting seed
+        return  # no need to go through the normal process
+    board = []  # empty out the board in case this is running on a restart
+    for _ in range(BOARD_SIZE):  # iterate for each row and column --> visits each cell on the board
         tempRow = []
         for _ in range(BOARD_SIZE):
-            tempRow.append("▉▉" if random.random() <= DENSITY_FACTOR else "  ")
-        board.append(tempRow)
-    startingSeed = [[item for item in board[x]] for x in range(len(board))]
+            tempRow.append("▉▉" if random.random() <= DENSITY_FACTOR else "  ")  # fill the cell randomly, using the density factor
+    startingSeed = [[item for item in board[x]] for x in range(len(board))]  # again, shallow copy the board's initial state into startingSeed
 
 
+# adj: returns a list of the coordinates of cells adjacent to the cell with the given coordinates
 def adj(r, c):
     adjacents = []
-    possibleIndices = [(r-1, c-1), (r-1, c+1), (r+1, c-1), (r+1, c+1), (r-1, c), (r+1, c), (r, c-1), (r, c+1)]
-    for coords in possibleIndices:
-        if 0 <= coords[0] < BOARD_SIZE and 0 <= coords[1] < BOARD_SIZE:
+    possibleIndices = [(r-1, c-1), (r-1, c+1), (r+1, c-1), (r+1, c+1), (r-1, c), (r+1, c), (r, c-1), (r, c+1)]  # possible adjacent coords
+    for coords in possibleIndices:  # have to check whether each set of coordinates is actually valid and actually on the board
+        if 0 <= coords[0] < BOARD_SIZE and 0 <= coords[1] < BOARD_SIZE:  # coordinates are not out of bounds
             adjacents.append(coords)
     return adjacents
 
 
+# printBoard: print out the cells of the given board with vertical separators
 def printBoard(someBoard):
     for r in range(BOARD_SIZE):
         print("|".join(someBoard[r]))
 
 
+# encodeBoard: convert the given board into a string of 0s and 1s with rows separated by a slash
 def encodeBoard(someBoard):
     encodedString = ""
     for r in range(BOARD_SIZE):
-        encodedString += "".join([("0" if cell == "  " else "1") for cell in someBoard[r]])
-        encodedString += "/"
-    return encodedString[:-1]
+        encodedString += "".join([("0" if cell == "  " else "1") for cell in someBoard[r]])  # iterate over each row w/ list comprehension
+        encodedString += "/"  # row separator
+    return encodedString[:-1]  # remove the trailing slash
 
 
+# parseBoard: companion to encodeBoard that decodes a board string into its corresponding 2D array object
 def parseBoard(encoded):
     parsedBoard = []
-    for row in encoded.split("/"):
+    for row in encoded.split("/"):  # access each row individually
         currentRow = []
         for cell in row:
-            currentRow.append("  " if cell == "0" else "▉▉")
-        parsedBoard.append(currentRow)
+            currentRow.append("  " if cell == "0" else "▉▉")  # convert 0s and 1s into standard cell notation
+        parsedBoard.append(currentRow)  # build up the board row by row
     return parsedBoard
 
 
