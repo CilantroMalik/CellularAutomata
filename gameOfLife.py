@@ -6,8 +6,7 @@ import sys
 from pynput.keyboard import Key, Listener, Events, KeyCode
 
 # feature wishlist:
-# - configuration editor with hotkeys (spacebar, arrow keys to navigate)
-# - encode starting seeds into simple text string, also clipboard interaction?
+# - clipboard interaction with saving seeds?
 # - generate a starting seed that produces a given end state
 
 BOARD_SIZE = 25
