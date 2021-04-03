@@ -95,68 +95,71 @@ def parseBoard(encoded):
     return parsedBoard
 
 
+# runSimulation: main function that actually runs the simulation
 def runSimulation():
-    global board, terminateIn, stateSnapshot, prevStateSnapshot, tertiarySnapshot, stateMessage, wantsToRestart
+    global board, terminateIn, stateSnapshot, prevStateSnapshot, tertiarySnapshot, stateMessage  # all game state variables
     os.system('clear')
-    printBoard(board)
+    printBoard(board)  # print the current state of the board
     time.sleep(SPEED)
-    while True:
-        if terminateIn > 0:
+    while True:  # keep running until the simulation terminates
+        if terminateIn > 0:  # count down the termination timer if it is active
             terminateIn -= 1
-        os.system('clear')
-        willBeBorn = []
-        willDie = []
-        for row in range(BOARD_SIZE):
+        os.system('clear')  # clear the window on every step so transitions are seamless
+        willBeBorn = []  # list of cells that go from dead to alive on this time step
+        willDie = []  # list of cells that go from alive to dead on this time step
+        for row in range(BOARD_SIZE):  # iterate through each cell
             for col in range(BOARD_SIZE):
-                countAlive = 0
+                countAlive = 0  # count its alive neighbors by looping through adjacents
                 for cell in adj(row, col):
-                    if board[cell[0]][cell[1]] == "▉▉":
+                    if board[cell[0]][cell[1]] == "▉▉":  # check whether each neighbor is alive
                         countAlive += 1
-                if countAlive > 3 and board[row][col] == "▉▉":
+                if countAlive > 3 and board[row][col] == "▉▉":  # rule 1: live cell w/ more than three live neighbors -> death by overpopulation
                     willDie.append((row, col))
-                if countAlive < 2 and board[row][col] == "▉▉":
+                if countAlive < 2 and board[row][col] == "▉▉":  # rule 2: live cell w/ less than two live neighbors -> death by isolation
                     willDie.append((row, col))
-                if countAlive == 3 and board[row][col] == "  ":
+                if countAlive == 3 and board[row][col] == "  ":  # rule 3: dead cell with exactly three live neighbors -> birth
                     willBeBorn.append((row, col))
-        for cell in willBeBorn:
+        for cell in willBeBorn:  # handle births and deaths after logic is complete — only now modify the actual board state
             board[cell[0]][cell[1]] = "▉▉"
         for cell in willDie:
             board[cell[0]][cell[1]] = "  "
-        if board == prevStateSnapshot != [] and stateMessage == "":
+        if board == prevStateSnapshot != [] and stateMessage == "":  # if this board is the same as two steps ago, we have periodicity of 2
             stateMessage = "The ecosystem will permanently oscillate between two states, terminating"
-            terminateIn = 6
-        if board == tertiarySnapshot != [] and stateMessage == "":
+            terminateIn = 6  # let it go on for a few more steps to make the periodic nature clear to the user
+        if board == tertiarySnapshot != [] and stateMessage == "":  # if this board is the same as three steps ago, we have periodicity of 3
             stateMessage = "The ecosystem will permanently oscillate between three states, terminating"
-            terminateIn = 9
+            terminateIn = 9  # let it go on for three more periods so the user can see that it will repeat infinitely
+        # update the snapshots: shuffle each one back one position and set the current board to the most recent snapshot
         tertiarySnapshot = [[item for item in prevStateSnapshot[x]] for x in range(len(prevStateSnapshot))]
         prevStateSnapshot = [[item for item in stateSnapshot[x]] for x in range(len(stateSnapshot))]
         stateSnapshot = [[item for item in board[x]] for x in range(len(board))]
-        printBoard(board)
-        if stateSnapshot == prevStateSnapshot != [] and stateMessage == "":
+        printBoard(board)  # print out the board with changes from this time step
+        if stateSnapshot == prevStateSnapshot != [] and stateMessage == "":  # if the past two states are equal, we have a stationary system
             stateMessage = "The ecosystem has reached permanent stasis, terminating"
-            terminateIn = 4
-        if terminateIn == 0 or wantsToQuit:
+            terminateIn = 4  # wait a little and then terminate
+        if terminateIn == 0 or wantsToQuit:  # if the terminate counter is zero, end the game
             break
-        if stateMessage != "":
+        if stateMessage != "":  # if there is a message about stasis or oscillation, display that below the board
             print(stateMessage)
-        time.sleep(SPEED)
+        time.sleep(SPEED)  # wait the specified amount between time steps
 
 
+# resetSimulation: resets all global game state variables to their initial state
 def resetSimulation():
     global board, startingSeed, stateSnapshot, prevStateSnapshot, tertiarySnapshot, terminateIn, stateMessage, savedSeed
-    board, startingSeed, stateSnapshot, prevStateSnapshot, tertiarySnapshot = [], [], [], [], []
-    terminateIn, stateMessage, savedSeed = -1, "", False
+    board, startingSeed, stateSnapshot, prevStateSnapshot, tertiarySnapshot = [], [], [], [], []  # clear all arrays
+    terminateIn, stateMessage, savedSeed = -1, "", False  # reset terminate counter, state message, and saved seed
 
 
-board = []
-startingSeed = []
-stateSnapshot = []
-prevStateSnapshot = []
-tertiarySnapshot = []
-terminateIn = -1
-stateMessage = ""
-wantsToQuit = False
-savedSeed = False
+board = []  # keep track of the current board state
+startingSeed = []  # keep track of the initial board state
+stateSnapshot = []  # holds the previous board state
+prevStateSnapshot = []  # holds the board state from two time steps ago
+tertiarySnapshot = []  # holds the board state from three time steps ago
+terminateIn = -1  # game end counter, starts at -1 and set to an actual value if the simulation will end imminently
+stateMessage = ""  # message stating why the simulation would end, if and when it does
+wantsToQuit = False  # flag that signals that the user has inputted a quit command mid-simulation
+savedSeed = False  # signals whether the user has inputted a seed (saved or created) so a random one shouldn't be generated
 
 # with Listener(on_press=keyPressed, on_release=keyReleased) as listener:
 #     listener.join()
