@@ -164,56 +164,56 @@ savedSeed = False  # signals whether the user has inputted a seed (saved or crea
 # with Listener(on_press=keyPressed, on_release=keyReleased) as listener:
 #     listener.join()
 
-print("--- Options ---")
+print("--- Options ---")  # lay out the possible actions the user can take
 print("Enter: start the simulation with a random seed")
 print("c: create a starting configuration in real time")
 print("l: load the simulation from a saved seed")
 print("o: override default simulation parameters")
 action = input("Choose your options (as many as you want, but not both l and c): ")
-if "l" in action:
+if "l" in action:  # load a simulation from a board code that the user pastes in
     board = parseBoard(input("Paste in your board code here: "))
-    savedSeed = True
-if "o" in action:
+    savedSeed = True  # we don't want to randomly generate a board in this case
+if "o" in action:  # override parameters
     if "l" in action:
-        print("Parameters to override are speed (s).")
+        print("Parameters to override are speed (s).")  # for a saved seed, it makes no sense to change density or size
     elif "c" in action:
-        print("Parameters to override are board size (b) or speed (s).")
+        print("Parameters to override are board size (b) or speed (s).")  # for configuration editor, no need to worry about density
     else:
-        print("Parameters to override are board size (b), density factor (d), or speed (s).")
+        print("Parameters to override are board size (b), density factor (d), or speed (s).")  # or else, offer all the options
     while True:
-        override = input("Type in the corresponding letter, then a space, then the new value: ").split(" ")
+        override = input("Type in the corresponding letter, then a space, then the new value: ").split(" ")  # stores [property, value]
         try:
-            if override[0] == 'b':
+            if override[0] == 'b':  # board size
                 BOARD_SIZE = int(override[1])
-            elif override[0] == 'd':
+            elif override[0] == 'd':  # density
                 DENSITY_FACTOR = float(override[1])
-            elif override[0] == 's':
+            elif override[0] == 's':  # speed
                 SPEED = float(override[1])
-            again = input("Type o to override another parameter, or enter to start the simulation: ")
+            again = input("Type o to override another parameter, or enter to start the simulation: ")  # override as many as desired
             if again == "":
                 break
         except ValueError:
-            print("Invalid parameter value entered.")
+            print("Invalid parameter value entered.")  # error handling
             continue
-if "c" in action:
-    quit = False
-    boardBuilder = [["  "]*BOARD_SIZE for _ in range(BOARD_SIZE)]
-    focus = [0, 0]
-    while True:
+if "c" in action:  # configuration editor for the user to create a custom starting board state
+    quit = False  # flag to keep track of whether the user is done creating their configuration
+    boardBuilder = [["  "]*BOARD_SIZE for _ in range(BOARD_SIZE)]  # start with empty board
+    focus = [0, 0]  # which cell is currently "focused" by the user's cursor
+    while True:  # go until the user wants to quit
         os.system('clear')
-        temp = boardBuilder[focus[0]][focus[1]]
+        temp = boardBuilder[focus[0]][focus[1]]  # store the actual value so we can put the focus indicator
         boardBuilder[focus[0]][focus[1]] = "··"
-        printBoard(boardBuilder)
+        printBoard(boardBuilder)  # print the board and then revert the value of the focused cell back to the original
         boardBuilder[focus[0]][focus[1]] = temp
-        with Events() as events:
+        with Events() as events:  # check for keyboard events
             print("> ")
-            event = events.get(0.001 if quit else 100000)
+            event = events.get(0.001 if quit else 100000)  # prevent capturing of events if the user wants to quit
             if quit:
-                break
-            if event.key == Key.up:
+                break  # finish if the user wants to quit
+            if event.key == Key.up:  # up key: move the cursor up, if it can be moved
                 if focus[0] != 0:
                     focus[0] -= 1
-            elif event.key == Key.down:
+            elif event.key == Key.down:  # all other directions function similarly
                 if focus[0] != BOARD_SIZE-1:
                     focus[0] += 1
             elif event.key == Key.left:
@@ -222,19 +222,21 @@ if "c" in action:
             elif event.key == Key.right:
                 if focus[1] != BOARD_SIZE-1:
                     focus[1] += 1
-            elif event.key == KeyCode.from_char("1"):
+            elif event.key == KeyCode.from_char("1"):  # 1 means fill the focused cell
                 boardBuilder[focus[0]][focus[1]] = "▉▉"
-            elif event.key == KeyCode.from_char("2"):
+            elif event.key == KeyCode.from_char("2"):  # 2 means empty the focused cell
                 boardBuilder[focus[0]][focus[1]] = "  "
-            elif event.key == KeyCode.from_char("q"):
+            elif event.key == KeyCode.from_char("q"):  # q means they want to quit, so set the flag
                 quit = True
-        time.sleep(0.1)
-    board = [[item for item in boardBuilder[x]] for x in range(len(boardBuilder))]
-    savedSeed = True
+        time.sleep(0.1)  # so inputs do not get registered multiple times
+    board = [[item for item in boardBuilder[x]] for x in range(len(boardBuilder))]  # shallow-copy into the main board variable
+    savedSeed = True  # we do not want to create a random configuration here either
 
+# run the simulation for the first time
 generateSeed()
 runSimulation()
 
+# for all subsequent runs, show an interim interface before restarting
 while True:
     purge = input("Simulation finished. Press enter to continue.")
     print("--- Options ---")
@@ -242,23 +244,22 @@ while True:
     print("s: save this starting seed")
     print("q: quit the playground")
     action = input("Choose one of the above options or press Enter: ")
-    if action == "":
+    if action == "":  # enter: restart the simulation, with a small delay
         print("simulation restarting...")
         time.sleep(2)
         os.system('clear')
         resetSimulation()
         generateSeed()
         runSimulation()
-    elif action == "s":
+    elif action == "s":  # save seed: encode the starting board state and output it
         print("*** Starting Seed ***")
         print(encodeBoard(startingSeed))
         restart = input("Press q to quit or anything else to restart: ")
-        if restart == 'q':
+        if restart == 'q':  # quit the program
             sys.exit()
-        else:
+        else:  # restart the simulation, just as above
             resetSimulation()
             generateSeed()
             runSimulation()
-    elif action == "q":
+    elif action == "q":  # quit: simply exit the program
         sys.exit()
-    print("action was", action, "- end loop")
